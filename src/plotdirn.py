@@ -4,6 +4,19 @@ from astropy.io import fits
 from rotfunc import *
 
 folfits = "../../"
+width = 6
+ht = width
+plt.rc('font', family='serif', serif='Times',size=10)
+plt.rc('text', usetex=True)
+plt.rc('xtick', labelsize=10)
+plt.rc('ytick', labelsize=10)
+plt.rc('axes', labelsize=12)
+plt.rc('legend',fontsize=10)
+fig = plt.figure()
+fig.set_size_inches(width,ht)
+
+listra,listdec = np.genfromtxt('srclist',usecols=(2,3),delimiter=',',unpack=True)
+srcnam = np.genfromtxt('srclist',usecols=(1),delimiter=',',dtype=str)
 
 e1alph = 266.58787
 e1del = -28.72842
@@ -89,23 +102,31 @@ del2 = np.empty(nsm)
 del3 = np.empty(nsm)
 
 plt.axes().set_aspect('equal', 'datalim')
-plt.ylim(-30,-27)
-plt.xlim(265.8,267.2)
-plt.xlabel(r" $\alpha$ (RA)",fontsize=15)
-plt.ylabel(r" $\delta$ (dec)",fontsize=15)
-plt.tick_params(labelsize=15)
+plt.ylim(-29.6,-28.5)
+plt.xlim(265.75,267.0)
+plt.gca().invert_xaxis();
+plt.xlabel(r" $\alpha$ (RA)")
+plt.ylabel(r" $\delta$ (dec)")
+#plt.tick_params(labelsize=15)
 plt.grid()
 plt.plot(e1alph,e1del,'bo',markersize=7)
-plt.plot([saxalph,grsalph,ksalph,e2alph,igralph],\
-        [saxdel,grsdel,ksdel,e2del,igrdel],'ko',markersize=7)
+#plt.plot([saxalph,grsalph,ksalph,e2alph,igralph],\
+#        [saxdel,grsdel,ksdel,e2del,igrdel],'ko',markersize=7)
+plt.plot(listra,listdec,'ko',markersize=7)
 ylo,yhi = plt.ylim()
-offs = (yhi - ylo)*0.05 # 10% of the range
-plt.text(266.1, e1del,'1E 1743.1-2843')
-plt.text(saxalph + 0.8*offs,saxdel,'SAX J1747.0-2853')
-plt.text(grsalph-2*offs,grsdel-offs,'GRS J1741.9-2853')
-plt.text(ksalph-2*offs,ksdel-offs,'KS J1741-293')
-plt.text(e2alph-2*offs,e2del-offs,'2E 1742.9-2929')
-plt.text(igralph-2*offs,igrdel-offs,'IGR J17473-272')
+#offs = (yhi - ylo)*0.05 # 10% of the range
+offs = 0.017
+#plt.text(266.1, e1del,'1E 1743.1-2843')
+plt.text(e1alph - offs, e1del + offs,'1E 1743.1-2843')
+
+for nam,lra,ldec in zip(srcnam,listra,listdec) :
+    plt.text(lra - offs, ldec + offs,nam);
+
+#plt.text(saxalph + 0.8*offs,saxdel,'SAX J1747.0-2853')
+#plt.text(grsalph-2*offs,grsdel-offs,'GRS J1741.9-2853')
+#plt.text(ksalph-2*offs,ksdel-offs,'KS J1741-293')
+#plt.text(e2alph-2*offs,e2del-offs,'2E 1742.9-2929')
+#plt.text(igralph-2*offs,igrdel-offs,'IGR J17473-272')
 
 for ii in np.arange(nsm) :
     if ( ii < quart.shape[0]) :
@@ -131,5 +152,8 @@ for ii in np.arange(nsm) :
        plt.plot(np.rad2deg(alph2[ii]),np.rad2deg(del2[ii]),'+',color='gray',markersize=10)
        plt.plot(np.rad2deg(alph3[ii]),np.rad2deg(del3[ii]),'+',color='gray',markersize=10)
        
+fig.tight_layout()
+plt.show()
 
-
+#fig.tight_layout()
+fig.savefig('astropnt.pdf',format='pdf',dpi=500)
