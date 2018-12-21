@@ -11,6 +11,7 @@ from os.path import isfile
 
 folfits="../../"
 threedplot = False
+g3src = False
 #Nifty trick picked from https://stackoverflow.com/questions/13531247/python-catching-specific-exception
 class MyValueError(ValueError) : pass
 
@@ -147,6 +148,15 @@ def getratio(srcra,srcdec,pntvec,Ri2c) :
     lx2 = effarea(2)*np.abs(collimfunc(t1,t2,2))
     return lx2/lx1
 
+def getcollim(srcra,srcdec,pntvec,Ri2c,lxpc=1) :
+    offvec = iner2dc(srcra,srcdec)
+    ofc = Ri2c*offvec
+    pnc = Ri2c*np.matrix(pntvec).T
+    t1,t2 = getangle(pnc.A1,ofc.A1) 
+    cfunc = np.abs(collimfunc(t1,t2,lxpc))
+    return cfunc
+
+
 
 listra,listdec = np.genfromtxt('srclist',usecols=(2,3),delimiter=',',unpack=True)
 srcnam = np.genfromtxt('srclist',usecols=(1),delimiter=',',dtype=str)
@@ -258,12 +268,14 @@ if (isfile(fldat)) :
         ratiogrid2 = rtd["ratiogrid2"]
         ragrid = rtd["ragrid"]
         decgrid = rtd["decgrid"]
-
+        fovgrid = rtd["fovgrid"]
+stepprog = 10 #%
 if (doloop) :
     ragrid = np.linspace(-gridlim,gridlim,nptg) + centra
     decgrid = np.linspace(-gridlim,gridlim,nptg) + centdec
     ratiogrid = np.zeros((nptg,nptg))
     ratiogrid2 = np.zeros((nptg,nptg))
+    fovgrid = np.zeros((nptg,nptg))
     for ira in np.arange(nptg) :
         for idc in np.arange(nptg) :
             try :
@@ -271,13 +283,22 @@ if (doloop) :
                         decgrid[idc]*np.pi/180,pntvec_b1,Ri2c_b1)
                 ratiogrid2[idc,ira] = getratio(ragrid[ira]*np.pi/180, \
                         decgrid[idc]*np.pi/180,pntvec_b2,Ri2c_b2)
+                fovgrid[idc,ira] = getcollim(ragrid[ira]*np.pi/180, \
+                        decgrid[idc]*np.pi/180,pntvec_b1,Ri2c_b1)
+                pprog = 100*((ira-1)*nptg + idc)/(nptg*nptg)
+                if (pprog > (repo + stepprog)) :
+                    print("Progress " + pprog + "% ...")
+                    repo = pprog
+
+
             except MyValueError :
                 continue
     np.savez(folfits+"ratios.npz",nptg=nptg,grid=gridlim,centra=centra,centdec=centdec,\
-            ratiogrid=ratiogrid,ratiogrid2=ratiogrid2,ragrid=ragrid,decgrid=decgrid)
+            ratiogrid=ratiogrid,ratiogrid2=ratiogrid2,ragrid=ragrid,decgrid=decgrid,fovgrid=fovgrid)
 
 ratb1 = 1.66
 ratb2 = 3.06
+fovlim = 0.02
 
 rg,dg = np.meshgrid(ragrid,decgrid)
 
@@ -326,7 +347,7 @@ if threedplot :
 hdliu = fits.open(folfits + "liu_cat.fits")
 hdrit = fits.open(folfits + "ritter_cat.fits")
 
-width = 6
+width = 10
 ht = width
 plt.rc('font', family='serif', serif='Times',size=10)
 plt.rc('text', usetex=True)
@@ -337,36 +358,60 @@ plt.rc('legend',fontsize=10)
 fig = plt.figure('Ratios')
 fig.set_size_inches(width,ht)
 plt.axes().set_aspect('equal', 'datalim')
-plt.ylim(-30.05,-27.65)
+plt.ylim(-30.2,-27.0)
 plt.xlim(265.4,267.9)
 plt.gca().invert_xaxis();
 plt.xlabel(r" $\alpha$ (RA)")
 plt.ylabel(r" $\delta$ (dec)")
 plt.grid()
 
-plt.plot(listra,listdec,'ko',markersize=3.7)
-plt.plot(listra[-1],listdec[-1],'r*',markersize=4.7)
-plt.text(266.42,-29.07,"Gal. Cent.")
-plt.text(266.08,-29.42,"GC X-4")
-plt.plot(hdliu[1].data['RA'],hdliu[1].data['DEC'],'ro',markersize=3.6)
-plt.plot(hdrit[1].data['RA'],hdrit[1].data['DEC'],'go',markersize=3.5)
-plt.plot(1.0*hdl[1].data['Roll_RA'][idsel][-1],1.0*hdl[1].data['Roll_DEC'][idsel][-1],'k^',markersize=5)
-plt.plot(1.0*hdl[1].data['Roll_RA'][idsel2][-1],1.0*hdl[1].data['Roll_DEC'][idsel2][-1],color='gray',marker='^',markersize=5)
+
+listra2,listdec2 = np.genfromtxt('srclist2',usecols=(2,3),delimiter=',',unpack=True)
+type2 = np.genfromtxt('srclist2',usecols=(4),delimiter=",",dtype=str)
+nam2 = np.genfromtxt('srclist2',usecols=(1),delimiter=',',dtype=str)
+idstop = np.where(np.isnan(listra2))[0][0]
+idtx2 = np.where(type2=='T')[0]
+iduk2 = np.where(type2=='U')[0]
+
+
 selpts = np.where((ratiogrid > 0.9*ratb1) & (ratiogrid < 1.1*ratb1))
 selpts2 = np.where((ratiogrid2 > 0.9*ratb2) & (ratiogrid2 < 1.1*ratb2))
+selptsfov = np.where((fovgrid >= 0.01) & (fovgrid <= 0.0125))
+
+plt.plot(1.0*hdl[1].data['Roll_RA'][idsel][-1],1.0*hdl[1].data['Roll_DEC'][idsel][-1],'k^',markersize=5)
+plt.plot(1.0*hdl[1].data['Roll_RA'][idsel2][-1],1.0*hdl[1].data['Roll_DEC'][idsel2][-1],color='gray',marker='^',markersize=5)
+plt.plot(e1alph,e1del,color='b',marker='o',markersize=3.6)
+if (not g3src) :
+    plt.plot(listra,listdec,'ko',markersize=3.7)
+    plt.text(266.08,-29.42,"GC X-4")
+    plt.plot(hdliu[1].data['RA'],hdliu[1].data['DEC'],'ro',markersize=3.6)
+    plt.plot(hdrit[1].data['RA'],hdrit[1].data['DEC'],'go',markersize=3.5)
+    plt.plot(listra2[:idstop],listdec2[:idstop],'*',color='goldenrod',markersize=7.6)
+    plt.plot(rg[selpts],dg[selpts],'k.',markersize=1.2,alpha=0.6)
+    plt.plot(rg[selpts2],dg[selpts2],'.',color='gray',markersize=1.2,alpha=0.8)
+    plt.text(266.9,-28.08,"Ratio=1.66")
+    plt.text(266.1,-27.9,"Ratio=3.06")
+    plt.hlines([centdec-gridlim,centdec+gridlim],centra-gridlim,centra+gridlim,color='k',alpha=0.7)
+    plt.vlines([centra-gridlim,centra+gridlim],centdec-gridlim,centdec+gridlim,color='k',alpha=0.7)
+else :
+    plt.plot(listra2[idtx2],listdec2[idtx2],'o',color='goldenrod',markersize=3.6)
+    plt.plot(listra2[iduk2],listdec2[iduk2],'o',color='g',markersize=3.6)
+    plt.plot(rg[selptsfov],dg[selptsfov],'.',color='r',markersize=2.3)
+    plt.vlines(centra+gridlim,centdec-0.8*gridlim,centdec+0.8*gridlim,color='r',linewidth=1.2)
+    for ra2,dec2,nm2 in zip(listra2[np.isfinite(listra2)],listdec2[np.isfinite(listra2)],nam2[np.isfinite(listra2)]) :
+        plt.text(ra2 - offs, dec2 - 3*offs,nm2)
+    plt.text(e1alph - offs,e1del - 3*offs,'1E  1743.1-2843')
+
+plt.text(266.72,-29.07,"Gal. Cent.")
+plt.plot(listra[-1],listdec[-1],'r*',markersize=4.7)
+
 #plt.fill(rg[selpts],dg[selpts],'k',alpha=0.6) - Not useful - fills out a larger polygon !!
 #h,xe,ye = np.histogram2d(rg[selpts],dg[selpts],bins=50)
 #h2,xe2,ye2 = np.histogram2d(rg[selpts2],dg[selpts2],bins=50)
 #plt.imshow(h==0,origin='lower',cmap=plt.gray(),extent=[xe[-1],xe[0],ye[-1],ye[0]])
-plt.plot(rg[selpts],dg[selpts],'k.',markersize=1.2,alpha=0.6)
-plt.plot(rg[selpts2],dg[selpts2],'.',color='gray',markersize=1.2,alpha=0.8)
-plt.hlines([centdec-gridlim,centdec+gridlim],centra-gridlim,centra+gridlim,color='k')
-plt.vlines([centra-gridlim,centra+gridlim],centdec-gridlim,centdec+gridlim,color='k')
-plt.text(266.9,-28.08,"Ratio=1.66")
-plt.text(266.1,-27.9,"Ratio=3.06")
 plt.show()
 fth.close()
 sth.close()
-fig.savefig('../report/Area.pdf',format='pdf',dpi=500)
+fig.savefig('../report/Area2.pdf',format='pdf',dpi=500)
 #hdllc.close()
 hdl.close()
