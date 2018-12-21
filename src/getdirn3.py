@@ -323,6 +323,9 @@ if threedplot :
     sfr11 = ax.plot_surface(rg,dg,ratb1*0.9,alpha=0.2,color='k')
 
 
+hdliu = fits.open(folfits + "liu_cat.fits")
+hdrit = fits.open(folfits + "ritter_cat.fits")
+
 width = 6
 ht = width
 plt.rc('font', family='serif', serif='Times',size=10)
@@ -341,7 +344,12 @@ plt.xlabel(r" $\alpha$ (RA)")
 plt.ylabel(r" $\delta$ (dec)")
 plt.grid()
 
-plt.plot(listra,listdec,'ko',markersize=4)
+plt.plot(listra,listdec,'ko',markersize=3.7)
+plt.plot(listra[-1],listdec[-1],'r*',markersize=4.7)
+plt.text(266.42,-29.07,"Gal. Cent.")
+plt.text(266.08,-29.42,"GC X-4")
+plt.plot(hdliu[1].data['RA'],hdliu[1].data['DEC'],'ro',markersize=3.6)
+plt.plot(hdrit[1].data['RA'],hdrit[1].data['DEC'],'go',markersize=3.5)
 plt.plot(1.0*hdl[1].data['Roll_RA'][idsel][-1],1.0*hdl[1].data['Roll_DEC'][idsel][-1],'k^',markersize=5)
 plt.plot(1.0*hdl[1].data['Roll_RA'][idsel2][-1],1.0*hdl[1].data['Roll_DEC'][idsel2][-1],color='gray',marker='^',markersize=5)
 selpts = np.where((ratiogrid > 0.9*ratb1) & (ratiogrid < 1.1*ratb1))
